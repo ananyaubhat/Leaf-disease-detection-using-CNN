@@ -1,0 +1,107 @@
+import tkinter as tk
+from PIL import Image, ImageTk
+from tkinter.filedialog import askopenfilename
+from tensorflow.keras.preprocessing import image
+from tensorflow.keras.models import load_model
+import numpy as np
+import cv2
+import imutils
+
+# Disease list
+li = ['Apple__Apple_scab', 'Apple_Black_rot', 'Apple__Cedar_apple_rust',
+      'Apple__healthy', 'Blueberry_healthy', 'Cherry(including_sour)_Powdery_mildew',
+      'Cherry_(including_sour)healthy', 'Corn(maize)_Cercospora_leaf_spot Gray_leaf_spot',
+      'Corn_(maize)Common_rust', 'Corn_(maize)Northern_Leaf_Blight', 'Corn(maize)_healthy',
+      'Grape__Black_rot', 'Grape_Esca(Black_Measles)', 'Grape__Leaf_blight(Isariopsis_Leaf_Spot)',
+      'Grape__healthy', 'Orange_Haunglongbing(Citrus_greening)', 'Peach___Bacterial_spot',
+      'Peach__healthy', 'Pepper,_bell_Bacterial_spot', 'Pepper,_bell_healthy', 'Potato__Early_blight',
+      'Potato__Late_blight', 'Potato_healthy', 'Raspberry_healthy', 'Soybean__healthy',
+      'Squash__Powdery_mildew', 'Strawberry_Leaf_scorch', 'Strawberry_healthy', 'Tomato__Bacterial_spot',
+      'Tomato__Early_blight', 'Tomato_Late_blight', 'Tomato_Leaf_Mold', 'Tomato__Septoria_leaf_spot',
+      'Tomato__Spider_mites Two-spotted_spider_mite', 'Tomato_Target_Spot', 'Tomato__Tomato_Yellow_Leaf_Curl_Virus',
+      'Tomato__Tomato_mosaic_virus', 'Tomato__healthy']
+
+# Fertilizer recommendations
+fertilizer_recommendations = {
+    'Apple___Apple_scab': 'Use Copper-based fungicides.',
+    'Apple___Black_rot': 'Apply Sulfur or Copper fungicides.',
+    'Apple___Cedar_apple_rust': 'Use Mancozeb or Myclobutanil.',
+    'Corn_(maize)Common_rust': 'Apply Fungicides with Propiconazole.',
+    'Corn_(maize)_Northern_Leaf_Blight': 'Use Fungicides like Azoxystrobin.',
+    'Grape___Black_rot': 'Apply Captan or Copper fungicide.',
+    'Orange__Haunglongbing(Citrus_greening)': 'Use Zinc & Manganese supplements.',
+    'Potato___Early_blight': 'Apply Fungicides containing Chlorothalonil.',
+    'Potato___Late_blight': 'Use Mancozeb or Copper-based fungicides.',
+    'Tomato___Bacterial_spot': 'Apply Copper-based bactericides.',
+    'Tomato___Early_blight': 'Use Fungicides with Daconil or Chlorothalonil.',
+    'Tomato___Late_blight': 'Apply Fungicides like Mancozeb or Chlorothalonil.',
+    'Tomato___Septoria_leaf_spot': 'Use Copper or Sulfur-based fungicides.',
+}
+
+# Load the trained model
+classifier = load_model('PLANT_MODEL.hdf5')
+
+# GUI setup
+root = tk.Tk()
+root.title("Plant Leaf Disease Detection")
+root.geometry("800x600")
+root.configure(background="gray25")
+
+title = tk.Label(text="Select An Image To Process", background="gray25", fg="white", font=("helv36", 15))
+title.grid(row=0, column=2, padx=10, pady=10)
+
+def exit_app():
+    root.destroy()
+
+def clear():
+    cv2.destroyAllWindows()
+    disease_label.config(text="Status:\n\nAccuracy:\n\nRecommended Fertilizer:")
+    
+def analysis():
+    image_path = path
+    new_img = image.load_img(image_path, target_size=(224, 224))
+    img = image.img_to_array(new_img)
+    img = np.expand_dims(img, axis=0)
+    img = img / 255
+
+    # Predict disease
+    prediction = classifier.predict(img)
+    d = prediction.flatten()
+    max_index = np.argmax(d)
+    class_name = li[max_index]
+    accuracy = round(d[max_index] * 100, 2)
+
+    # Get recommended fertilizer
+    fertilizer = fertilizer_recommendations.get(class_name, "No specific fertilizer recommended.")
+
+    # Update GUI
+    disease_label.config(text=f"Status: {class_name}\n\nAccuracy: {accuracy}%\n\nRecommended Fertilizer: {fertilizer}")
+
+def openphoto():
+    global path
+    path = askopenfilename(filetypes=[("Image File", '')])
+    im = Image.open(path)
+    tkimage = ImageTk.PhotoImage(im)
+    myvar = tk.Label(root, image=tkimage, height="224", width="224")
+    myvar.image = tkimage
+    myvar.grid(row=3, column=2, padx=10, pady=10)
+
+    analyze_button = tk.Button(text="Analyse Image", fg="white", bg="green", command=analysis)
+    analyze_button.grid(row=4, column=2, padx=10, pady=10)
+
+# Disease Label
+disease_label = tk.Label(text="Status:\n\nAccuracy:\n\nRecommended Fertilizer:", background="gray25", fg="white", font=("", 15))
+disease_label.grid(column=3, row=3, padx=10, pady=10)
+
+# Buttons
+select_image_button = tk.Button(text="Select Image", fg="white", bg="purple", command=openphoto)
+select_image_button.grid(row=1, column=2, padx=10, pady=10)
+
+clear_button = tk.Button(text="Clear", fg="white", bg="purple", command=clear)
+clear_button.grid(row=6, column=2, padx=10, pady=10)
+
+exit_button = tk.Button(text="Exit", fg="white", bg="red2", command=exit_app)
+exit_button.grid(row=7, column=2, padx=10, pady=10)
+
+root.mainloop()
+
